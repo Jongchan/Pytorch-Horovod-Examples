@@ -138,7 +138,9 @@ transform_test = transforms.Compose([
 
 print("| Preparing CIFAR-100 dataset...")
 sys.stdout.write("| ")
+import glob
 print ("\ndata dir", args.datadir)
+print ("\ndata dir list: {}".format(glob.glob(os.path.join(args.datadir, "*"))))
 trainset = torchvision.datasets.CIFAR100(root=args.datadir, train=True, download=False, transform=transform_train)
 testset = torchvision.datasets.CIFAR100(root=args.datadir, train=False, download=False, transform=transform_test)
 num_classes = 100
