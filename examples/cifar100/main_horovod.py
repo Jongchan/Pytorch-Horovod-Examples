@@ -218,7 +218,7 @@ if use_cuda:
 '''
 3. Broadcast parameters, scale learning rate, compression, and distributed optimizer
 '''
-hvd.broadcast_parameters(model.state_dict(), root_rank=0)
+hvd.broadcast_parameters(net.state_dict(), root_rank=0)
 
 criterion = nn.CrossEntropyLoss()
 
@@ -230,7 +230,7 @@ def train(epoch):
     total = 0
     optimizer = optim.SGD(net.parameters(), lr=cf.learning_rate(args.lr, epoch)*hvd.size(), momentum=0.9, weight_decay=5e-4)
     #compression = hvd.Compression.fp16
-    optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=model.named_parameters())
+    optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters())
 
     print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch)))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
