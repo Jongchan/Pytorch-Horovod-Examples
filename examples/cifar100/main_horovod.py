@@ -150,9 +150,9 @@ num_classes = 100
 2. Initialize Horovod distributed sampler
 '''
 train_sampler = torch.utils.data.distributed.DistributedSampler(trainset, num_replicas=hvd.size(), rank=hvd.rank())
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=1, sampler=train_sampler, pin_memory=True)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, num_workers=1, sampler=train_sampler, pin_memory=True)
 test_sampler = torch.utils.data.distributed.DistributedSampler(testset, num_replicas=hvd.size(), rank=hvd.rank())
-testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=1, sampler=test_sampler, pin_memory=True)
+testloader = torch.utils.data.DataLoader(testset, batch_size=100, num_workers=1, sampler=test_sampler, pin_memory=True)
 
 # Return network & file name
 def getNetwork(args):
