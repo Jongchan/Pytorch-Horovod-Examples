@@ -116,6 +116,7 @@ hvd.init()
 
 use_cuda = torch.cuda.is_available()
 if use_cuda:
+    print ("use cuda!!")
     torch.cuda.set_device(hvd.local_rank())
     torch.cuda.manual_seed(1111)
 
@@ -220,7 +221,7 @@ if use_cuda:
 '''
 hvd.broadcast_parameters(net.state_dict(), root_rank=0)
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss().cuda()
 
 # Training
 def train(epoch):
