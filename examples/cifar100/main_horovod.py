@@ -152,7 +152,7 @@ num_classes = 100
 train_sampler = torch.utils.data.distributed.DistributedSampler(trainset, num_replicas=hvd.size(), rank=hvd.rank())
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, num_workers=1, sampler=train_sampler, pin_memory=True)
 test_sampler = torch.utils.data.distributed.DistributedSampler(testset, num_replicas=hvd.size(), rank=hvd.rank())
-testloader = torch.utils.data.DataLoader(testset, batch_size=100, num_workers=1, sampler=test_sampler, pin_memory=True)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, num_workers=1, sampler=test_sampler, pin_memory=True)
 
 # Return network & file name
 def getNetwork(args):
@@ -243,7 +243,7 @@ def train(epoch):
         loss.backward()  # Backward Propagation
         optimizer.step() # Optimizer update
 
-        train_loss += loss.data[0]
+        train_loss += loss.data.item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
@@ -251,7 +251,7 @@ def train(epoch):
         sys.stdout.write('\r')
         sys.stdout.write('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
                 %(epoch, num_epochs, batch_idx+1,
-                    (len(trainset)//batch_size)+1, loss.data[0], 100.*correct/total))
+                    (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total))
         sys.stdout.flush()
 
 def metric_average(val, name):
@@ -272,12 +272,12 @@ def test(epoch):
         outputs = net(inputs)
         loss = criterion(outputs, targets)
 
-        test_loss += loss.data[0]
+        test_loss += loss.data.item()
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
+        correct += predicted.eq(targets.data).cpu().float().sum()
     test_loss /= len(test_sampler)
-    test_accuracy = correct / float(len(test_sampler))
+    test_accuracy = correct / len(test_sampler)
     test_loss = metric_average(test_loss, 'avg_loss')
     test_accuracy = metric_average(test_accuracy, 'avg_acc')
     if hvd.rank()==0:
