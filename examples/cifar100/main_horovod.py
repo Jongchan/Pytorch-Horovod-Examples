@@ -284,8 +284,8 @@ def test(epoch):
         print ("\n| Validation average loss : {:.4f}, accuracy: {:.2f}%\n".format(test_loss, 100.*test_accuracy))
 
     # Save checkpoint when best model
-    acc = 100.*correct/total
-    print("\n| Validation Epoch #%d\t\t\tLoss: %.4f Acc@1: %.2f%%" %(epoch, loss.data[0], acc))
+    #acc = 100.*correct/total
+    #print("\n| Validation Epoch #%d\t\t\tLoss: %.4f Acc@1: %.2f%%" %(epoch, loss.data[0], acc))
 
     '''
     if acc > best_acc:
