@@ -280,10 +280,10 @@ def test(epoch):
         correct += predicted.eq(targets.data).cpu().float().sum()
     test_loss /= len(test_sampler)
     test_accuracy = correct / len(test_sampler)
-    test_loss = metric_average(test_loss, 'avg_loss')
-    test_accuracy = metric_average(test_accuracy, 'avg_acc')
-    if hvd.rank()==0:
-        print ("\n| Validation average loss : {:.4f}, accuracy: {:.2f}%\n".format(test_loss, 100.*test_accuracy))
+    #test_loss = metric_average(test_loss, 'avg_loss')
+    #test_accuracy = metric_average(test_accuracy, 'avg_acc')
+    #if hvd.rank()==0:
+    #    print ("\n| Validation average loss : {:.4f}, accuracy: {:.2f}%\n".format(test_loss, 100.*test_accuracy))
 
     # Save checkpoint when best model
     #acc = 100.*correct/total
