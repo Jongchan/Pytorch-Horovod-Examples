@@ -99,6 +99,7 @@ class Wide_ResNet(nn.Module):
         return out
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR-100 Training')
+parser.add_argument('--datadir', required=True, type=str, help='data directory')
 parser.add_argument('--lr', default=0.1, type=float, help='learning_rate')
 parser.add_argument('--depth', default=28, type=int, help='depth of model')
 parser.add_argument('--widen_factor', default=10, type=int, help='width of model')
@@ -137,8 +138,8 @@ transform_test = transforms.Compose([
 
 print("| Preparing CIFAR-100 dataset...")
 sys.stdout.write("| ")
-trainset = torchvision.datasets.CIFAR100(root='/home/lunit/smbmount', train=True, download=False, transform=transform_train)
-testset = torchvision.datasets.CIFAR100(root='/home/lunit/smbmount', train=False, download=False, transform=transform_test)
+trainset = torchvision.datasets.CIFAR100(root=args.datadir, train=True, download=False, transform=transform_train)
+testset = torchvision.datasets.CIFAR100(root=args.datadir, train=False, download=False, transform=transform_test)
 num_classes = 100
 
 
