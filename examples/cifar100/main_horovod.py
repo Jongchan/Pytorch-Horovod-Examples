@@ -234,15 +234,19 @@ def train(epoch):
     optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters())
 
     print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch)))
+    t0 = time.time()
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
+        print ("data read time {}".format(time.time()-t0)); t0=time.time()
         outputs = net(inputs)               # Forward Propagation
+        print ("net time {}".format(time.time()-t0)); t0=time.time()
         loss = criterion(outputs, targets)  # Loss
         loss.backward()  # Backward Propagation
         optimizer.step() # Optimizer update
+        print ("backprop and loss time {}".format(time.time()-t0)); t0=time.time()
 
         train_loss += loss.data.item()
         _, predicted = torch.max(outputs.data, 1)
