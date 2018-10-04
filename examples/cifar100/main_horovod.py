@@ -212,8 +212,8 @@ else:
 
 if use_cuda:
     net.cuda()
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-    cudnn.benchmark = True
+    #net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    #cudnn.benchmark = True
 
 '''
 3. Broadcast parameters, scale learning rate, compression, and distributed optimizer
@@ -247,12 +247,14 @@ def train(epoch):
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
-
-        sys.stdout.write('\r')
-        sys.stdout.write('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
+        print ('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
                 %(epoch, num_epochs, batch_idx+1,
                     (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total))
-        sys.stdout.flush()
+        #sys.stdout.write('\r')
+        #sys.stdout.write('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
+        #        %(epoch, num_epochs, batch_idx+1,
+        #            (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total))
+        #sys.stdout.flush()
 
 def metric_average(val, name):
     tensor = torch.tensor(val)
@@ -313,8 +315,8 @@ elapsed_time = 0
 for epoch in range(start_epoch, start_epoch+num_epochs):
     start_time = time.time()
 
-    train(epoch)
     test(epoch)
+    train(epoch)
 
     epoch_time = time.time() - start_time
     elapsed_time += epoch_time
