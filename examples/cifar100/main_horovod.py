@@ -217,7 +217,7 @@ else:
     net.apply(conv_init)
 
 if use_cuda:
-    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    #net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
     net.cuda()
     #cudnn.benchmark = True
 
