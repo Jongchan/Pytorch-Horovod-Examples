@@ -122,6 +122,10 @@ if use_cuda:
 
 best_acc = 0
 start_epoch, num_epochs, batch_size, optim_type = cf.start_epoch, cf.num_epochs, cf.batch_size, cf.optim_type
+print ("device count {}".format(torch.cuda.device_count()))
+print ("batch size {} per node".format(batch_size))
+batch_size = batch_size * torch.cuda.device_count()
+print ("batch size {} in total".format(batch_size))
 
 # Data Uplaod
 print('\n[Phase 1] : Data Preparation')
