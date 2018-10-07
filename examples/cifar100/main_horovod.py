@@ -175,8 +175,8 @@ if (args.testOnly):
     net = checkpoint['net']
 
     if use_cuda:
-        net.cuda()
         net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+        net.cuda()
         cudnn.benchmark = True
 
     net.eval()
@@ -216,8 +216,8 @@ else:
     net.apply(conv_init)
 
 if use_cuda:
+    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
     net.cuda()
-    #net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
     #cudnn.benchmark = True
 
 '''
