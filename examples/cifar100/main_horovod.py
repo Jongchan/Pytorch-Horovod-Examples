@@ -228,10 +228,10 @@ hvd.broadcast_parameters(net.state_dict(), root_rank=0)
 
 criterion = nn.CrossEntropyLoss().cuda()
 
-print ("initializing optimzier on node {}".format(hvd.local_rank()))
+print ("initializing optimizer on node {}".format(hvd.local_rank()))
+compression = hvd.Compression.fp16
 optimizer = optim.SGD(net.parameters(), lr=args.lr*hvd.size(), momentum=0.9, weight_decay=5e-4)
-#compression = hvd.Compression.fp16
-optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters())
+optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters(), compression=compression)
 
 # Training
 def train(epoch):
