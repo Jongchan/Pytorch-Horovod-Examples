@@ -129,8 +129,8 @@ transform_test = transforms.Compose([
 
 print("| Preparing CIFAR-100 dataset...")
 sys.stdout.write("| ")
-trainset = torchvision.datasets.CIFAR100(root='/home/lunit/smbmount', train=True, download=False, transform=transform_train)
-testset = torchvision.datasets.CIFAR100(root='/home/lunit/smbmount', train=False, download=False, transform=transform_test)
+trainset = torchvision.datasets.CIFAR100(root='/home/lunit/data', train=True, download=False, transform=transform_train)
+testset = torchvision.datasets.CIFAR100(root='/home/lunit/data', train=False, download=False, transform=transform_test)
 num_classes = 100
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
@@ -235,17 +235,17 @@ def test(epoch):
     test_loss = 0
     correct = 0
     total = 0
-    for batch_idx, (inputs, targets) in enumerate(testloader):
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-
-        test_loss += loss.data[0]
-        _, predicted = torch.max(outputs.data, 1)
-        total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().sum()
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(testloader):
+            if use_cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            outputs = net(inputs)
+            loss = criterion(outputs, targets)
+ 
+            test_loss += loss.data.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += targets.size(0)
+            correct += predicted.eq(targets.data).cpu().sum()
 
     # Save checkpoint when best model
     acc = 100.*correct/total

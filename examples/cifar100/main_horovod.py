@@ -156,9 +156,9 @@ num_classes = 100
 2. Initialize Horovod distributed sampler
 '''
 train_sampler = torch.utils.data.distributed.DistributedSampler(trainset, num_replicas=hvd.size(), rank=hvd.rank())
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, num_workers=1, sampler=train_sampler, pin_memory=True)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, num_workers=0, sampler=train_sampler, pin_memory=False)
 test_sampler = torch.utils.data.distributed.DistributedSampler(testset, num_replicas=hvd.size(), rank=hvd.rank())
-testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, num_workers=1, sampler=test_sampler, pin_memory=True)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, num_workers=0, sampler=test_sampler, pin_memory=False)
 
 # Return network & file name
 def getNetwork(args):
@@ -228,30 +228,28 @@ hvd.broadcast_parameters(net.state_dict(), root_rank=0)
 
 criterion = nn.CrossEntropyLoss().cuda()
 
+print ("initializing optimzier on node {}".format(hvd.local_rank()))
+optimizer = optim.SGD(net.parameters(), lr=args.lr*hvd.size(), momentum=0.9, weight_decay=5e-4)
+#compression = hvd.Compression.fp16
+optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters())
+
 # Training
 def train(epoch):
     net.train()
     train_loss = 0
     correct = 0
     total = 0
-    optimizer = optim.SGD(net.parameters(), lr=cf.learning_rate(args.lr, epoch)*hvd.size(), momentum=0.9, weight_decay=5e-4)
-    #compression = hvd.Compression.fp16
-    optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters())
 
     print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch)))
-    t0 = time.time()
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
-        print ("data read time {}".format(time.time()-t0)); t0=time.time()
         outputs = net(inputs)               # Forward Propagation
-        print ("net time {}".format(time.time()-t0)); t0=time.time()
         loss = criterion(outputs, targets)  # Loss
         loss.backward()  # Backward Propagation
         optimizer.step() # Optimizer update
-        print ("backprop and loss time {}".format(time.time()-t0)); t0=time.time()
 
         train_loss += loss.data.item()
         _, predicted = torch.max(outputs.data, 1)
@@ -260,11 +258,6 @@ def train(epoch):
         print ('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
                 %(epoch, num_epochs, batch_idx+1,
                     (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total))
-        #sys.stdout.write('\r')
-        #sys.stdout.write('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
-        #        %(epoch, num_epochs, batch_idx+1,
-        #            (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total))
-        #sys.stdout.flush()
 
 def metric_average(val, name):
     tensor = torch.tensor(val)
@@ -277,44 +270,23 @@ def test(epoch):
     test_loss = 0
     correct = 0
     total = 0
-    for batch_idx, (inputs, targets) in enumerate(testloader):
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
-        inputs, targets = Variable(inputs, volatile=True), Variable(targets)
-        outputs = net(inputs)
-        loss = criterion(outputs, targets)
-
-        test_loss += loss.data.item()
-        _, predicted = torch.max(outputs.data, 1)
-        total += targets.size(0)
-        correct += predicted.eq(targets.data).cpu().float().sum()
+    with torch.no_grad():
+        for batch_idx, (inputs, targets) in enumerate(testloader):
+            if use_cuda:
+                inputs, targets = inputs.cuda(), targets.cuda()
+            outputs = net(inputs)
+            loss = criterion(outputs, targets)
+ 
+            test_loss += loss.data.item()
+            _, predicted = torch.max(outputs.data, 1)
+            total += targets.size(0)
+            correct += predicted.eq(targets.data).cpu().float().sum()
     test_loss /= len(test_sampler)
     test_accuracy = correct / len(test_sampler)
-    #test_loss = metric_average(test_loss, 'avg_loss')
-    #test_accuracy = metric_average(test_accuracy, 'avg_acc')
-    #if hvd.rank()==0:
-    #    print ("\n| Validation average loss : {:.4f}, accuracy: {:.2f}%\n".format(test_loss, 100.*test_accuracy))
-
-    # Save checkpoint when best model
-    #acc = 100.*correct/total
-    #print("\n| Validation Epoch #%d\t\t\tLoss: %.4f Acc@1: %.2f%%" %(epoch, loss.data[0], acc))
-
-    '''
-    if acc > best_acc:
-        print('| Saving Best model...\t\t\tTop1 = %.2f%%' %(acc))
-        state = {
-                'net':net.module if use_cuda else net,
-                'acc':acc,
-                'epoch':epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
-        save_point = './checkpoint/'+os.sep
-        if not os.path.isdir(save_point):
-            os.mkdir(save_point)
-        torch.save(state, save_point+file_name+'.t7')
-        best_acc = acc
-    '''
+    test_loss = metric_average(test_loss, 'avg_loss')
+    test_accuracy = metric_average(test_accuracy, 'avg_acc')
+    if hvd.rank()==0:
+        print ("\n| Validation average loss : {:.4f}, accuracy: {:.2f}%\n".format(test_loss, 100.*test_accuracy))
 
 print('\n[Phase 3] : Training model')
 print('| Training Epochs = ' + str(num_epochs))
