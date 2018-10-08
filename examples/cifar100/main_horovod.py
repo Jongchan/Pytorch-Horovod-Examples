@@ -239,8 +239,10 @@ def train(epoch):
     train_loss = 0
     correct = 0
     total = 0
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = cf.learning_rate(args.lr*hvd.size(), epoch)
 
-    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch)))
+    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr*hvd.size(), epoch)))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
