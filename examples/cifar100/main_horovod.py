@@ -118,7 +118,7 @@ use_cuda = torch.cuda.is_available()
 if use_cuda:
     print ("use cuda!!")
     print ("local rank {}".format(hvd.local_rank()))
-    torch.cuda.set_device(hvd.local_rank())
+    torch.cuda.set_device(hvd.local_rank()*torch.cuda.device_count())
     torch.cuda.manual_seed(1111)
 
 best_acc = 0
