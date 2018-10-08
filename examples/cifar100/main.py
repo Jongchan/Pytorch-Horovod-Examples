@@ -133,8 +133,8 @@ trainset = torchvision.datasets.CIFAR100(root='/home/lunit/data', train=True, do
 testset = torchvision.datasets.CIFAR100(root='/home/lunit/data', train=False, download=False, transform=transform_test)
 num_classes = 100
 
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
-testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=1)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=1)
 
 # Return network & file name
 def getNetwork(args):

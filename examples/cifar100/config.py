@@ -1,7 +1,7 @@
 ############### Pytorch CIFAR configuration file ###############
 import math
 
-start_epoch = 1
+start_epoch = 0
 num_epochs = 200
 batch_size = 128
 optim_type = 'SGD'
@@ -19,7 +19,7 @@ std = {
 # Only for cifar-10
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-def learning_rate(init, epoch):
+def learning_rate(init, epoch, warmup_epoch, batch_idx, batch_count, hvd_size):
     optim_factor = 0
     if(epoch > 160):
         optim_factor = 3
@@ -27,8 +27,11 @@ def learning_rate(init, epoch):
         optim_factor = 2
     elif(epoch > 60):
         optim_factor = 1
+    elif(epoch < warmup_epoch):
+        epoch += float(batch_idx + 1) / batch_count
+        return init * (epoch * (hvd_size - 1) / warmup_epoch + 1)
 
-    return init*math.pow(0.2, optim_factor)
+    return init*math.pow(0.2, optim_factor)*hvd_size
 
 def get_hms(seconds):
     m, s = divmod(seconds, 60)

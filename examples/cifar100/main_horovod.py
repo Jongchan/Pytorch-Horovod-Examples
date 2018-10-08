@@ -103,6 +103,7 @@ parser.add_argument('--datadir', required=True, type=str, help='data directory')
 parser.add_argument('--lr', default=0.1, type=float, help='learning_rate')
 parser.add_argument('--depth', default=28, type=int, help='depth of model')
 parser.add_argument('--widen_factor', default=10, type=int, help='width of model')
+parser.add_argument('--warmup-epoch', default=5, type=int, help='lr warmup')
 parser.add_argument('--dropout', default=0.3, type=float, help='dropout_rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--testOnly', '-t', action='store_true', help='Test mode with the saved model')
@@ -156,9 +157,9 @@ num_classes = 100
 2. Initialize Horovod distributed sampler
 '''
 train_sampler = torch.utils.data.distributed.DistributedSampler(trainset, num_replicas=hvd.size(), rank=hvd.rank())
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, num_workers=0, sampler=train_sampler, pin_memory=False)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, num_workers=1, sampler=train_sampler, pin_memory=True)
 test_sampler = torch.utils.data.distributed.DistributedSampler(testset, num_replicas=hvd.size(), rank=hvd.rank())
-testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, num_workers=0, sampler=test_sampler, pin_memory=False)
+testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, num_workers=1, sampler=test_sampler, pin_memory=True)
 
 # Return network & file name
 def getNetwork(args):
@@ -229,9 +230,8 @@ hvd.broadcast_parameters(net.state_dict(), root_rank=0)
 criterion = nn.CrossEntropyLoss().cuda()
 
 print ("initializing optimizer on node {}".format(hvd.local_rank()))
-compression = hvd.Compression.fp16
-optimizer = optim.SGD(net.parameters(), lr=args.lr*hvd.size(), momentum=0.9, weight_decay=5e-4)
-optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters(), compression=compression)
+optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
+optimizer = hvd.DistributedOptimizer(optimizer, named_parameters=net.named_parameters())
 
 # Training
 def train(epoch):
@@ -239,11 +239,11 @@ def train(epoch):
     train_loss = 0
     correct = 0
     total = 0
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = cf.learning_rate(args.lr*hvd.size(), epoch)
 
-    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr*hvd.size(), epoch)))
+    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch, args.warmup_epoch, 0, len(trainloader), hvd.size())))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
+        for param_group in optimizer.param_groups:
+            param_group['lr'] = cf.learning_rate(args.lr, epoch, args.warmup_epoch, batch_idx, len(trainloader), hvd.size())
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
@@ -299,8 +299,8 @@ elapsed_time = 0
 for epoch in range(start_epoch, start_epoch+num_epochs):
     start_time = time.time()
 
-    test(epoch)
     train(epoch)
+    test(epoch)
 
     epoch_time = time.time() - start_time
     elapsed_time += epoch_time
