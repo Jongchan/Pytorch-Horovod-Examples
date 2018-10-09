@@ -32,11 +32,11 @@ def learning_rate_orig(init, epoch):
 
 def learning_rate(init, epoch, warmup_epoch, batch_idx, batch_count, hvd_size):
     optim_factor = 0
-    if(epoch > 160):
+    if(epoch > 160+warmup_epoch):
         optim_factor = 3
-    elif(epoch > 120):
+    elif(epoch > 120+warmup_epoch):
         optim_factor = 2
-    elif(epoch > 60):
+    elif(epoch > 60+warmup_epoch):
         optim_factor = 1
     elif(epoch < warmup_epoch):
         epoch += float(batch_idx + 1) / batch_count

@@ -103,7 +103,7 @@ parser.add_argument('--datadir', required=True, type=str, help='data directory')
 parser.add_argument('--lr', default=0.1, type=float, help='learning_rate')
 parser.add_argument('--depth', default=28, type=int, help='depth of model')
 parser.add_argument('--widen_factor', default=10, type=int, help='width of model')
-parser.add_argument('--warmup-epoch', default=5, type=int, help='lr warmup')
+parser.add_argument('--warmup-epoch', default=20, type=int, help='lr warmup')
 parser.add_argument('--dropout', default=0.3, type=float, help='dropout_rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--testOnly', '-t', action='store_true', help='Test mode with the saved model')
@@ -296,7 +296,7 @@ print('| Initial Learning Rate = ' + str(args.lr))
 print('| Optimizer = ' + str(optim_type))
 
 elapsed_time = 0
-for epoch in range(start_epoch, start_epoch+num_epochs):
+for epoch in range(start_epoch, start_epoch+num_epochs+20):
     start_time = time.time()
 
     train(epoch)
