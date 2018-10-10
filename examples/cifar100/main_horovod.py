@@ -292,6 +292,9 @@ def train(epoch):
         print ('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%% LR: %.8f'
                 %(epoch, num_epochs, batch_idx+1,
                     (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total, lr))
+    if hvd.rank()==0:
+        save_dict = {"epoch": epoch, "optimizer": optimizer.state_dict(), "state_dict": net.state_dict()}
+        torch.save(save_dict, os.path.join('/home/lunit/Pytorch-Horovod-Examples/examples/cifar100/checkpoints/', 'cifar100_last.pth.tar'))
 
 def metric_average(val, name):
     tensor = torch.tensor(val)
