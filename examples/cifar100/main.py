@@ -100,7 +100,7 @@ class Wide_ResNet(nn.Module):
         return out
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR-100 Training')
-parser.add_argument('--lr', default=1e-12, type=float, help='learning_rate')
+parser.add_argument('--lr', default=1. / (2**12), type=float, help='learning_rate')
 parser.add_argument('--depth', default=28, type=int, help='depth of model')
 parser.add_argument('--widen_factor', default=10, type=int, help='width of model')
 parser.add_argument('--dropout', default=0.3, type=float, help='dropout_rate')
@@ -233,17 +233,18 @@ if use_cuda:
 
 criterion = nn.CrossEntropyLoss()
 
-optimizer = optim.SGD(net.parameters(), lr=args.lr*torch.cuda.device_count(), momentum=0.9, weight_decay=5e-4)
+optimizer = optim.SGD(net.parameters(), lr=args.lr*batch_size, momentum=0.9, weight_decay=5e-4)
 # Training
 def train(epoch):
     net.train()
     train_loss = 0
     correct = 0
     total = 0
+    lr = cf.learning_rate_orig(args.lr*batch_size, epoch)
     for param_group in optimizer.param_groups:
-        param_group['lr'] = cf.learning_rate_orig(args.lr*batch_size*torch.cuda.device_count(), epoch)
+        param_group['lr'] = lr
 
-    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate_orig(args.lr*batch_size*torch.cuda.device_count(), epoch)))
+    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate_orig(args.lr*batch_size, epoch)))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
@@ -259,9 +260,9 @@ def train(epoch):
         correct += predicted.eq(targets.data).cpu().sum()
 
         sys.stdout.write('\r')
-        sys.stdout.write('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
+        sys.stdout.write('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%% \t\tLR: %.10f'
                 %(epoch, num_epochs, batch_idx+1,
-                    (len(trainset)//batch_size)+1, loss.data[0], 100.*correct/total))
+                    (len(trainset)//batch_size)+1, loss.data[0], 100.*correct/total, lr))
         sys.stdout.flush()
 
 def test(epoch):
