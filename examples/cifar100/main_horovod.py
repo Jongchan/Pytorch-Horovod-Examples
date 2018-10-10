@@ -268,9 +268,9 @@ def train(epoch):
     correct = 0
     total = 0
 
-    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch, args.warmup_epoch, 0, len(trainloader), hvd.size())))
+    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr*batch_size, epoch, args.warmup_epoch, 0, len(trainloader), hvd.size())))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
-        lr = cf.learning_rate(args.lr, epoch, args.warmup_epoch, batch_idx, len(trainloader), hvd.size())
+        lr = cf.learning_rate(args.lr*batch_size, epoch, args.warmup_epoch, batch_idx, len(trainloader), hvd.size())
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
         if use_cuda:
