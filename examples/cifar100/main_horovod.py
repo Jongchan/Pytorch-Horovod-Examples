@@ -103,7 +103,7 @@ class Wide_ResNet(nn.Module):
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR-100 Training')
 parser.add_argument('--datadir', required=True, type=str, help='data directory')
-parser.add_argument('--lr', default=0.1, type=float, help='learning_rate')
+parser.add_argument('--lr', default=1e-12, type=float, help='learning_rate')
 parser.add_argument('--depth', default=28, type=int, help='depth of model')
 parser.add_argument('--widen_factor', default=10, type=int, help='width of model')
 parser.add_argument('--batch-size', default=128, type=int, help='width of model')
@@ -270,8 +270,9 @@ def train(epoch):
 
     print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate(args.lr, epoch, args.warmup_epoch, 0, len(trainloader), hvd.size())))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
+        lr = cf.learning_rate(args.lr, epoch, args.warmup_epoch, batch_idx, len(trainloader), hvd.size())
         for param_group in optimizer.param_groups:
-            param_group['lr'] = cf.learning_rate(args.lr, epoch, args.warmup_epoch, batch_idx, len(trainloader), hvd.size())
+            param_group['lr'] = lr
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
@@ -285,9 +286,9 @@ def train(epoch):
         _, predicted = torch.max(outputs.data, 1)
         total += targets.size(0)
         correct += predicted.eq(targets.data).cpu().sum()
-        print ('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
+        print ('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%% LR: %.8f'
                 %(epoch, num_epochs, batch_idx+1,
-                    (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total))
+                    (len(trainset)//batch_size)+1, loss.data.item(), 100.*correct/total, lr))
 
 def metric_average(val, name):
     tensor = torch.tensor(val)
@@ -315,8 +316,10 @@ def test(epoch):
     test_accuracy = correct / len(test_sampler)
     test_loss = metric_average(test_loss, 'avg_loss')
     test_accuracy = metric_average(test_accuracy, 'avg_acc')
+    if best_acc < test_accuracy:
+        best_acc = test_accuracy
     if hvd.rank()==0:
-        print ("\n| Validation average loss : {:.4f}, accuracy: {:.2f}%\n".format(test_loss, 100.*test_accuracy))
+        print ("\n| Validation average loss : {:.4f}, accuracy: {:.2f}%, best accuracy so far {:.2f}%\n".format(test_loss, 100.*test_accuracy, 100.*best_acc))
 
 print('\n[Phase 3] : Training model')
 print('| Training Epochs = ' + str(num_epochs))
