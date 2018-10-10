@@ -100,7 +100,7 @@ class Wide_ResNet(nn.Module):
         return out
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR-100 Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning_rate')
+parser.add_argument('--lr', default=1e-12, type=float, help='learning_rate')
 parser.add_argument('--depth', default=28, type=int, help='depth of model')
 parser.add_argument('--widen_factor', default=10, type=int, help='width of model')
 parser.add_argument('--dropout', default=0.3, type=float, help='dropout_rate')
@@ -241,15 +241,13 @@ def train(epoch):
     correct = 0
     total = 0
     for param_group in optimizer.param_groups:
-        param_group['lr'] = cf.learning_rate_orig(args.lr*torch.cuda.device_count(), epoch)
+        param_group['lr'] = cf.learning_rate_orig(args.lr*batch_size*torch.cuda.device_count(), epoch)
 
-    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate_orig(args.lr*torch.cuda.device_count(), epoch)))
+    print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate_orig(args.lr*batch_size*torch.cuda.device_count(), epoch)))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
-        print ("get data")
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
-        print ("start inference")
         outputs = net(inputs)               # Forward Propagation
         loss = criterion(outputs, targets)  # Loss
         loss.backward()  # Backward Propagation
