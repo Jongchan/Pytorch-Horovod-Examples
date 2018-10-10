@@ -122,12 +122,10 @@ args = parser.parse_args()
 '''
 hvd.init()
 
-use_cuda = torch.cuda.is_available()
-if use_cuda:
-    print ("use cuda!!")
-    print ("local rank {}".format(hvd.local_rank()))
-    torch.cuda.set_device(hvd.local_rank())
-    torch.cuda.manual_seed(1111)
+print ("use cuda!!")
+print ("local rank {}".format(hvd.local_rank()))
+torch.cuda.set_device(hvd.local_rank())
+torch.cuda.manual_seed(1111)
 
 best_acc = 0
 start_epoch, num_epochs, batch_size, optim_type = cf.start_epoch, cf.num_epochs, args.batch_size, cf.optim_type
@@ -206,10 +204,9 @@ if (args.testOnly):
     checkpoint = torch.load('./checkpoint/'+os.sep+file_name+'.t7')
     net = checkpoint['net']
 
-    if use_cuda:
-        net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-        net.cuda()
-        cudnn.benchmark = True
+    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    net.cuda()
+    cudnn.benchmark = True
 
     net.eval()
     test_loss = 0
@@ -217,8 +214,7 @@ if (args.testOnly):
     total = 0
 
     for batch_idx, (inputs, targets) in enumerate(testloader):
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda()
+        inputs, targets = inputs.cuda(), targets.cuda()
         inputs, targets = Variable(inputs, volatile=True), Variable(targets)
         outputs = net(inputs)
 
@@ -247,11 +243,10 @@ else:
     net, file_name = getNetwork(args)
     net.apply(conv_init)
 
-if use_cuda:
-    if args.multi_gpu:
-        net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
-        cudnn.benchmark = True
-    net.cuda()
+if args.multi_gpu:
+    net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    cudnn.benchmark = True
+net.cuda()
 
 '''
 3. Broadcast parameters, scale learning rate, compression, and distributed optimizer
@@ -276,8 +271,7 @@ def train(epoch):
         lr = cf.learning_rate(args.lr*batch_size, epoch, args.warmup_epoch, batch_idx, len(trainloader), hvd.size())
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
-        if use_cuda:
-            inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
+        inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
         inputs, targets = Variable(inputs), Variable(targets)
         outputs = net(inputs)               # Forward Propagation
@@ -309,8 +303,7 @@ def test(epoch):
     total = 0
     with torch.no_grad():
         for batch_idx, (inputs, targets) in enumerate(testloader):
-            if use_cuda:
-                inputs, targets = inputs.cuda(), targets.cuda()
+            inputs, targets = inputs.cuda(), targets.cuda()
             outputs = net(inputs)
             loss = criterion(outputs, targets)
  
