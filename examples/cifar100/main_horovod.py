@@ -113,6 +113,7 @@ parser.add_argument('--arch', default='WIDERESNET', type=str, help='dropout_rate
 parser.add_argument('--dropout', default=0.3, type=float, help='dropout_rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--testOnly', '-t', action='store_true', help='Test mode with the saved model')
+parser.add_argument('--multi-gpu', action='store_true', help='Test mode with the saved model')
 args = parser.parse_args()
 
 # Hyper Parameter settings
@@ -132,8 +133,9 @@ best_acc = 0
 start_epoch, num_epochs, batch_size, optim_type = cf.start_epoch, cf.num_epochs, args.batch_size, cf.optim_type
 print ("device count {}".format(torch.cuda.device_count()))
 print ("batch size {} per node".format(batch_size))
-#batch_size = batch_size * torch.cuda.device_count()
-#print ("batch size {} in total".format(batch_size))
+if args.multi_gpu:
+    batch_size = batch_size * torch.cuda.device_count()
+    print ("batch size {} in total".format(batch_size))
 if args.dataset=='CIFAR100':
     # Data Uplaod
     print('\n[Phase 1] : Data Preparation')
@@ -246,9 +248,10 @@ else:
     net.apply(conv_init)
 
 if use_cuda:
-    #net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+    if args.multi_gpu:
+        net = torch.nn.DataParallel(net, device_ids=range(torch.cuda.device_count()))
+        cudnn.benchmark = True
     net.cuda()
-    #cudnn.benchmark = True
 
 '''
 3. Broadcast parameters, scale learning rate, compression, and distributed optimizer
