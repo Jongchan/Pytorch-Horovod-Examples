@@ -10,6 +10,7 @@ import config as cf
 
 import torchvision
 import torchvision.transforms as transforms
+import torchvision.datasets as datasets
 
 import os
 import sys
@@ -19,6 +20,7 @@ import datetime
 
 from torch.autograd import Variable
 import numpy as np
+from preresnet import *
 
 def conv3x3(in_planes, out_planes, stride=1):
     return nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=stride, padding=1, bias=True)
@@ -27,10 +29,12 @@ def conv_init(m):
     classname = m.__class__.__name__
     if classname.find('Conv') != -1:
         init.xavier_uniform(m.weight, gain=np.sqrt(2))
-        init.constant(m.bias, 0)
+        if not m.bias is None:
+            init.constant(m.bias, 0)
     elif classname.find('BatchNorm') != -1:
         init.constant(m.weight, 1)
-        init.constant(m.bias, 0)
+        if not m.bias is None:
+            init.constant(m.bias, 0)
 
 class wide_basic(nn.Module):
     def __init__(self, in_planes, planes, dropout_rate, stride=1):
@@ -102,44 +106,74 @@ parser.add_argument('--widen_factor', default=10, type=int, help='width of model
 parser.add_argument('--dropout', default=0.3, type=float, help='dropout_rate')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--testOnly', '-t', action='store_true', help='Test mode with the saved model')
+parser.add_argument('--dataset', default='CIFAR100', type=str, help='dropout_rate')
+parser.add_argument('--arch', default='WIDERESNET', type=str, help='dropout_rate')
+parser.add_argument('--batch-size', default=128, type=int, help='width of model')
+parser.add_argument('--datadir', required=True, type=str, help='data directory')
 args = parser.parse_args()
 
 # Hyper Parameter settings
 use_cuda = torch.cuda.is_available()
 best_acc = 0
-start_epoch, num_epochs, batch_size, optim_type = cf.start_epoch, cf.num_epochs, cf.batch_size, cf.optim_type
+start_epoch, num_epochs, batch_size, optim_type = cf.start_epoch, cf.num_epochs, args.batch_size, cf.optim_type
 print ("gpu count {}".format(torch.cuda.device_count()))
 print ("batch size {} per gpu".format(batch_size))
 batch_size = batch_size * torch.cuda.device_count()
 print ("batch size {} in total".format(batch_size))
 
-# Data Uplaod
-print('\n[Phase 1] : Data Preparation')
-transform_train = transforms.Compose([
+if args.dataset=='CIFAR100':
+    # Data Uplaod
+    print('\n[Phase 1] : Data Preparation')
+    transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
     transforms.ToTensor(),
     transforms.Normalize(cf.mean['cifar100'], cf.std['cifar100']),
-]) # meanstd transformation
+    ]) # meanstd transformation
 
-transform_test = transforms.Compose([
+    transform_test = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(cf.mean['cifar100'], cf.std['cifar100']),
-])
+    ])
 
-print("| Preparing CIFAR-100 dataset...")
-sys.stdout.write("| ")
-trainset = torchvision.datasets.CIFAR100(root='/home/lunit/data', train=True, download=False, transform=transform_train)
-testset = torchvision.datasets.CIFAR100(root='/home/lunit/data', train=False, download=False, transform=transform_test)
-num_classes = 100
+    print("| Preparing CIFAR-100 dataset...")
+    sys.stdout.write("| ")
+    import glob
+    print ("\ndata dir", args.datadir)
+    print ("\ndata dir list: {}".format(glob.glob(os.path.join(args.datadir, "*"))))
+    trainset = torchvision.datasets.CIFAR100(root=args.datadir, train=True, download=False, transform=transform_train)
+    testset = torchvision.datasets.CIFAR100(root=args.datadir, train=False, download=False, transform=transform_test)
+    num_classes = 100
+elif args.dataset=='TinyImageNet':
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+    print ("\ndata dir", args.datadir)
+    testset = datasets.ImageFolder(os.path.join(args.datadir, 'val_cls'), transforms.Compose([
+                transforms.Scale(64),
+                transforms.CenterCrop(56),
+                transforms.ToTensor(),
+                normalize,
+                ]))
+    trainset = datasets.ImageFolder(os.path.join(args.datadir, 'train'), transforms.Compose([
+                transforms.Scale(64),
+                transforms.RandomCrop(56),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                normalize,
+                ]))
+    num_classes = 200
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=1)
 testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size, shuffle=False, num_workers=1)
 
 # Return network & file name
 def getNetwork(args):
-    net = Wide_ResNet(args.depth, args.widen_factor, args.dropout, num_classes)
-    file_name = 'wide-resnet-'+str(args.depth)+'x'+str(args.widen_factor)
+    if args.arch == 'WIDERESNET':
+        net = Wide_ResNet(args.depth, args.widen_factor, args.dropout, num_classes)
+        file_name = 'wide-resnet-'+str(args.depth)+'x'+str(args.widen_factor)
+    elif args.arch == 'PRERESNET':
+        net = preresnet(depth=args.depth, num_classes=num_classes)
+        file_name = 'preresnet-'+str(args.depth)
 
     return net, file_name
 
@@ -211,10 +245,11 @@ def train(epoch):
 
     print('\n=> Training Epoch #%d, LR=%.4f' %(epoch, cf.learning_rate_orig(args.lr*torch.cuda.device_count(), epoch)))
     for batch_idx, (inputs, targets) in enumerate(trainloader):
+        print ("get data")
         if use_cuda:
             inputs, targets = inputs.cuda(), targets.cuda() # GPU settings
         optimizer.zero_grad()
-        inputs, targets = Variable(inputs), Variable(targets)
+        print ("start inference")
         outputs = net(inputs)               # Forward Propagation
         loss = criterion(outputs, targets)  # Loss
         loss.backward()  # Backward Propagation
