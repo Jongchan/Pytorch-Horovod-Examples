@@ -123,8 +123,8 @@ args = parser.parse_args()
 hvd.init()
 
 print ("use cuda!!")
-print ("local rank {}".format(hvd.local_rank()))
-torch.cuda.set_device(hvd.local_rank())
+print ("local rank {}, rank {}".format(hvd.local_rank(),hvd.rank()))
+torch.cuda.set_device(hvd.rank())
 torch.cuda.manual_seed(1111)
 
 best_acc = 0
