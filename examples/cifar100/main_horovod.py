@@ -103,7 +103,7 @@ class Wide_ResNet(nn.Module):
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR-100 Training')
 parser.add_argument('--datadir', required=True, type=str, help='data directory')
-parser.add_argument('--lr', default=1e-12, type=float, help='learning_rate')
+parser.add_argument('--lr', default=1/(2**12), type=float, help='learning_rate')
 parser.add_argument('--depth', default=28, type=int, help='depth of model')
 parser.add_argument('--widen_factor', default=10, type=int, help='width of model')
 parser.add_argument('--batch-size', default=128, type=int, help='width of model')
